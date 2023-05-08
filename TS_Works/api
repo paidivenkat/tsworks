@@ -1,0 +1,109 @@
+from flask import Flask, request, jsonify
+import sqlite3
+from sqlite3 import Error
+
+app = Flask(name)
+
+# Define the database file path
+DB_FILE = "finance_data.db"
+
+
+def connect_to_database():
+    """Connects to the SQLite database and returns the connection object"""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        print(f"Successfully connected to the database: {DB_FILE}")
+    except Error as e:
+        print(e)
+    return conn
+
+
+@app.route("/stock_data/all", methods=["GET"])
+def get_all_stock_data_for_date():
+    """Returns all companies' stock data for a particular day"""
+    date = request.args.get("date")
+    if not date:
+        return "Date parameter is missing!", 400
+
+    conn = connect_to_database()
+    if not conn:
+        return "Failed to connect to the database!", 500
+
+    c = conn.cursor()
+    c.execute("SELECT * FROM finance_data WHERE date=?", (date,))
+    rows = c.fetchall()
+    data = []
+    for row in rows:
+        data.append({
+            "company": row[0],
+            "date": row[1],
+            "open": row[2],
+            "high": row[3],
+            "low": row[4],
+            "close": row[5],
+            "volume": row[6],
+            "adj_close": row[7]
+        })
+    conn.close()
+    return jsonify(data)
+
+
+@app.route("/stock_data/<company_name>/<date>", methods=["GET"])
+def get_stock_data_for_company_and_date(company_name, date):
+    """Returns all stock data for a particular company for a particular day"""
+    conn = connect_to_database()
+    if not conn:
+        return "Failed to connect to the database!", 500
+
+    c = conn.cursor()
+    c.execute("SELECT * FROM finance_data WHERE company=? AND date=?", (company_name, date))
+    rows = c.fetchall()
+    data = []
+    for row in rows:
+        data.append({
+            "company": row[0],
+            "date": row[1],
+            "open": row[2],
+            "high": row[3],
+            "low": row[4],
+            "close": row[5],
+            "volume": row[6],
+            "adj_close": row[7]
+        })
+    conn.close()
+    return jsonify(data)
+
+
+@app.route("/stock_data/<company_name>", methods=["GET"])
+def get_stock_data_for_company(company_name):
+    """Returns all stock data for a particular company"""
+    conn = connect_to_database()
+    if not conn:
+        return "Failed to connect to the database!", 500
+
+    c = conn.cursor()
+    c.execute("SELECT * FROM finance_data WHERE company=?", (company_name,))
+    rows = c.fetchall()
+    data = []
+    for row in rows:
+        data.append({
+            "company": row[0],
+            "date": row[1],
+            "open": row[2],
+            "high": row[3],
+            "low": row[4],
+            "close": row[5],
+            "volume": row[6],
+            "adj_close": row[7]
+        })
+    conn.close()
+    return jsonify(data)
+
+
+@app.route("/stock_data/<company_name>/<date>", methods=["POST", "PATCH"])
+def update_stock_data_for_company_by_date(company_name, date):
+    """Updates stock data for a company by date"""
+    data = request.get_json()
+    if not data:
+        return
